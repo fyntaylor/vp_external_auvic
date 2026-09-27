@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VP External Tracker — UVic LinLab</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:            #ECEAE6;
+  --surface:       #F5F4F1;
+  --card:          #FFFFFF;
+  --border:        #D4D0C8;
+  --border-light:  #E4E1DA;
+  --text:          #1A190F;
+  --muted:         #6B6860;
+  --subtle:        #9E9B94;
+  --accent:        #1B4F7E;
+  --accent-h:      #153F65;
+  --accent-bg:     #E5EDF6;
+  --green:         #1A7A4A;
+  --green-bg:      #E6F5EE;
+  --amber:         #A87000;
+  --amber-bg:      #FDF3DC;
+  --red:           #A02828;
+  --red-bg:        #F7E6E6;
+  --sidebar:       200px;
+  --r:             7px;
+  --r-sm:          4px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:           #131210;
+    --surface:      #1C1B18;
+    --card:         #242320;
+    --border:       #37352C;
+    --border-light: #2C2B26;
+    --text:         #EDEAE0;
+    --muted:        #A09D95;
+    --subtle:       #68655E;
+    --accent:       #5090CC;
+    --accent-h:     #60A0DC;
+    --accent-bg:    #182840;
+    --green:        #3AB870;
+    --green-bg:     #0E2418;
+    --amber:        #D4960A;
+    --amber-bg:     #241C06;
+    --red:          #D05050;
+    --red-bg:       #260E0E;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:           #131210;
+  --surface:      #1C1B18;
+  --card:         #242320;
+  --border:       #37352C;
+  --border-light: #2C2B26;
+  --text:         #EDEAE0;
+  --muted:        #A09D95;
+  --subtle:       #68655E;
+  --accent:       #5090CC;
+  --accent-h:     #60A0DC;
+  --accent-bg:    #182840;
+  --green:        #3AB870;
+  --green-bg:     #0E2418;
+  --amber:        #D4960A;
+  --amber-bg:     #241C06;
+  --red:          #D05050;
+  --red-bg:       #260E0E;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── Layout ────────────────────────────────── */
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--sidebar);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  position: fixed; top: 0; left: 0; bottom: 0;
+  display: flex; flex-direction: column;
+  z-index: 100;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.brand {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.brand-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.brand-sub {
+  font-size: 11px;
+  color: var(--subtle);
+  margin-top: 2px;
+}
+
+.nav {
+  flex: 1;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.nav-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  width: 100%;
+  transition: background 0.1s, color 0.1s;
+}
+
+.nav-btn:hover { background: var(--border-light); color: var(--text); }
+.nav-btn.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.nav-icon { font-size: 15px; flex-shrink: 0; }
+
+.sidebar-foot {
+  padding: 10px 14px;
+  font-size: 10px;
+  color: var(--subtle);
+  border-top: 1px solid var(--border-light);
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+.main {
+  margin-left: var(--sidebar);
+  flex: 1;
+  padding: 36px 40px 60px;
+}
+
+/* ── Section ────────────────────────────────── */
+.section { display: none; }
+.section.active { display: block; }
+
+.section-head { margin-bottom: 24px; }
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  text-wrap: balance;
+}
+.section-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+/* ── Add form ───────────────────────────────── */
+.add-form {
+  background: var(--accent-bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.field { flex: 1; min-width: 140px; }
+
+label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="date"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 72px; }
+
+/* ── Buttons ────────────────────────────────── */
+.btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-h); }
+
+.btn-ghost {
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+
+.del-btn {
+  all: unset;
+  cursor: pointer;
+  color: var(--subtle);
+  padding: 3px 5px;
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1;
+  transition: color 0.1s;
+}
+.del-btn:hover { color: var(--red); }
+
+/* ── Tables ─────────────────────────────────── */
+.tbl-wrap { background: var(--card); border: 1px solid var(--border-light); border-radius: var(--r); overflow: hidden; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+
+/* ── Cards ──────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 18px;
+}
+
+/* ── Empty state ────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--subtle);
+  font-size: 13px;
+}
+.empty-icon { font-size: 30px; margin-bottom: 8px; }
+
+/* ── Alert ──────────────────────────────────── */
+.alert {
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.alert-warn { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber); }
+
+/* ── TODO ───────────────────────────────────── */
+.todo-add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.todo-add-row input { flex: 1; }
+
+.todo-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.todo-list { display: flex; flex-direction: column; gap: 5px; }
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r-sm);
+  transition: opacity 0.15s;
+}
+
+.todo-item.done { opacity: 0.55; }
+.todo-item.done .todo-text { text-decoration: line-through; }
+
+.todo-cb {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.todo-text { flex: 1; font-size: 14px; }
+.todo-dt { font-size: 11px; color: var(--subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ── LOGINS ─────────────────────────────────── */
+.pw-dots { letter-spacing: 3px; font-size: 9px; color: var(--subtle); }
+
+.copy-btn {
+  all: unset;
+  cursor: pointer;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  margin-left: 6px;
+  transition: all 0.1s;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+.copy-btn.ok { color: var(--green); border-color: var(--green); }
+
+/* ── CLUBS / ORG INFO ───────────────────────────────── */
+.kv { margin-bottom: 7px; }
+.kv-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.kv-val { font-size: 13px; color: var(--text); word-break: break-all; }
+
+.org-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px 24px;
+}
+
+.section-sub2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.exec-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* ── MEETINGS ───────────────────────────────── */
+.meeting-card {
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.meeting-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.m-date-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.m-title { flex: 1; font-weight: 600; font-size: 14px; }
+.m-att-count { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.m-chevron { font-size: 11px; color: var(--subtle); transition: transform 0.15s; }
+.meeting-card.open .m-chevron { transform: rotate(180deg); }
+
+.meeting-body {
+  display: none;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--border-light);
+}
+.meeting-card.open .meeting-body { display: block; }
+
+.m-section { margin-top: 12px; }
+.m-section:first-child { margin-top: 0; }
+.m-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 5px; }
+.m-section-body { font-size: 13px; color: var(--text); white-space: pre-wrap; line-height: 1.6; }
+
+/* ── SPONSORS ───────────────────────────────── */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+
+.stat-tile {
+  background: var(--card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--r);
+  padding: 18px 16px;
+  text-align: center;
+}
+
+.stat-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.stat-tile.rcv .stat-num { color: var(--green); }
+.stat-tile.pnd .stat-num { color: var(--amber); }
+.stat-tile.dnd .stat-num { color: var(--red); }
+
+.filter-row { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+
+.f-btn {
+  all: unset;
+  cursor: pointer;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: all 0.1s;
+}
+.f-btn:hover, .f-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.f-btn.active.rcv { background: var(--green); border-color: var(--green); }
+.f-btn.active.pnd { background: var(--amber); border-color: var(--amber); }
+.f-btn.active.dnd { background: var(--red); border-color: var(--red); }
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+}
+.badge.received { background: var(--green-bg); color: var(--green); }
+.badge.pending   { background: var(--amber-bg); color: var(--amber); }
+.badge.denied    { background: var(--red-bg);   color: var(--red);   }
+
+.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ── Mobile nav ─────────────────────────────── */
+.mob-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 8px 0 env(safe-area-inset-bottom, 0);
+  z-index: 200;
+  justify-content: space-around;
+}
+
+.mob-btn {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 10px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.1s;
+}
+.mob-btn.active { color: var(--accent); }
+.mob-icon { font-size: 19px; }
+
+/* ── Responsive ─────────────────────────────── */
+@media (max-width: 680px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px 16px 80px; }
+  .mob-nav { display: flex; }
+  .hide-mob { display: none; }
+  .stats-row { gap: 8px; }
+  .stat-num { font-size: 24px; }
+  .stat-tile { padding: 14px 10px; }
+  .org-profile-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-name">UVic LinLab</div>
+      <div class="brand-sub">VP External</div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-btn active" data-tab="todo"><span class="nav-icon">✅</span>To Do</button>
+      <button class="nav-btn" data-tab="logins"><span class="nav-icon">🔑</span>Logins</button>
+      <button class="nav-btn" data-tab="clubs"><span class="nav-icon">🏛️</span>Club Info</button>
+      <button class="nav-btn" data-tab="meetings"><span class="nav-icon">📋</span>Meetings</button>
+      <button class="nav-btn" data-tab="sponsors"><span class="nav-icon">💼</span>Sponsorships</button>
+    </nav>
+    <div class="sidebar-foot">Data saved locally in this browser</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ── TO DO ──────────────────────────── -->
+    <section class="section active" id="section-todo">
+      <div class="section-head">
+        <h1 class="section-title">To Do</h1>
+        <p class="section-sub">Track tasks — check them off as you go</p>
+      </div>
+      <div class="todo-add-row">
+        <input type="text" id="todo-input" placeholder="Add a task and press Enter…" />
+        <button class="btn btn-primary" onclick="addTodo()">Add</button>
+      </div>
+      <div class="todo-meta">
+        <span id="todo-count" style="color:var(--muted);font-size:12px"></span>
+        <button class="btn btn-ghost btn-sm" onclick="clearDone()">Clear done</button>
+      </div>
+      <div class="todo-list" id="todo-list"></div>
+    </section>
+
+    <!-- ── LOGINS ─────────────────────────── -->
+    <section class="section" id="section-logins">
+      <div class="section-head">
+        <h1 class="section-title">Logins</h1>
+        <p class="section-sub">Club account credentials</p>
+      </div>
+      <div class="alert alert-warn">⚠️ Passwords are stored as plain text in your browser. Use for low-sensitivity club accounts only — not personal credentials.</div>
+      <div class="add-form">
+        <div class="form-row">
+          <div class="field"><label>Site / Service</label><input type="text" id="l-site" placeholder="e.g. Club Funds Portal"></div>
+          <div class="field"><label>Username / Email</label><input type="text" id="l-user" placeholder="username"></div>
+          <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>URL</label><input type="text" id="l-url" placeholder="https://…"></div>
+          <div class="field"><label>Notes</label><input type="text" id="l-notes" placeholder="Optional notes"></div>
+        </div>
+        <button class="btn btn-primary" onclick="addLogin()">Save Login</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Site</th><th>Username</th><th class="hide-mob">Password</th><th class="hide-mob">URL</th><th></th></tr></thead>
+          <tbody id="login-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── CLUBS ──────────────────────────── -->
+    <section class="section" id="section-clubs">
+      <div class="section-head">
+        <h1 class="section-title">Club Info</h1>
+        <p class="section-sub">External contacts and partner organizations</p>
+      </div>
+      <div class="add-form">
+        <div class="form-row">
+          <div class="field"><label>Organization</label><input type="text" id="c-name" placeholder="Organization name"></div>
+          <div class="field"><label>Contact Person</label><input type="text" id="c-contact" placeholder="Full name"></div>
+          <div class="field"><label>Category</label>
+            <select id="c-cat">
+              <option>Partner</option><option>Sponsor</option><option>University</option><option>Industry</option><option>Government</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Email</label><input type="text" id="c-email" placeholder="contact@…"></div>
+          <div class="field"><label>Phone</label><input type="text" id="c-phone" placeholder="250-…"></div>
+          <div class="field"><label>Website</label><input type="text" id="c-web" placeholder="https://…"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Notes</label><textarea id="c-notes" placeholder="Context, relationship history…" style="min-height:58px;"></textarea></div>
+        </div>
+        <button class="btn btn-primary" onclick="addClub()">Add Contact</button>
+      </div>
+      <div class="clubs-grid" id="clubs-grid"></div>
+    </section>
+
+    <!-- ── MEETINGS ───────────────────────── -->
+    <section class="section" id="section-meetings">
+      <div class="section-head">
+        <h1 class="section-title">Meeting Records</h1>
+        <p class="section-sub">Notes and action items from meetings</p>
+      </div>
+      <div class="add-form">
+        <div class="form-row">
+          <div class="field"><label>Title / Purpose</label><input type="text" id="m-title" placeholder="e.g. Sponsor intro call — Acme Ltd"></div>
+          <div class="field"><label>Date</label><input type="date" id="m-date"></div>
+          <div class="field"><label>Attendees</label><input type="text" id="m-att" placeholder="Names, comma-separated"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Notes</label><textarea id="m-notes" placeholder="Key points, decisions made…"></textarea></div>
+          <div class="field"><label>Action Items</label><textarea id="m-actions" placeholder="- Send proposal by Friday&#10;- Follow up with marketing"></textarea></div>
+        </div>
+        <button class="btn btn-primary" onclick="addMeeting()">Save Record</button>
+      </div>
+      <div id="meeting-list"></div>
+    </section>
+
+    <!-- ── SPONSORS ───────────────────────── -->
+    <section class="section" id="section-sponsors">
+      <div class="section-head">
+        <h1 class="section-title">Sponsorship Tracker</h1>
+        <p class="section-sub">Track applications and their outcomes. Click a status badge to cycle it.</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat-tile rcv"><div class="stat-num" id="stat-rcv">0</div><div class="stat-label">Received</div></div>
+        <div class="stat-tile pnd"><div class="stat-num" id="stat-pnd">0</div><div class="stat-label">Pending</div></div>
+        <div class="stat-tile dnd"><div class="stat-num" id="stat-dnd">0</div><div class="stat-label">Denied</div></div>
+      </div>
+      <div class="add-form">
+        <div class="form-row">
+          <div class="field"><label>Company / Organization</label><input type="text" id="s-co" placeholder="Company name"></div>
+          <div class="field"><label>Contact</label><input type="text" id="s-contact" placeholder="Contact person"></div>
+          <div class="field"><label>Status</label>
+            <select id="s-status"><option value="pending">Pending</option><option value="received">Received</option><option value="denied">Denied</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Amount Requested ($)</label><input type="number" id="s-req" placeholder="0" min="0"></div>
+          <div class="field"><label>Amount Received ($)</label><input type="number" id="s-rcv" placeholder="0" min="0"></div>
+          <div class="field"><label>Date Submitted</label><input type="date" id="s-date"></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Notes</label><input type="text" id="s-notes" placeholder="Any relevant notes…"></div>
+        </div>
+        <button class="btn btn-primary" onclick="addSponsor()">Add Application</button>
+      </div>
+      <div class="filter-row">
+        <button class="f-btn active" data-filter="all">All</button>
+        <button class="f-btn rcv" data-filter="received">Received</button>
+        <button class="f-btn pnd" data-filter="pending">Pending</button>
+        <button class="f-btn dnd" data-filter="denied">Denied</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th><th>Status</th><th>Requested</th><th>Received</th>
+              <th class="hide-mob">Date</th><th class="hide-mob">Contact</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="sponsor-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Mobile nav -->
+<nav class="mob-nav" id="mob-nav">
+  <button class="mob-btn active" data-tab="todo"><span class="mob-icon">✅</span>To Do</button>
+  <button class="mob-btn" data-tab="logins"><span class="mob-icon">🔑</span>Logins</button>
+  <button class="mob-btn" data-tab="clubs"><span class="mob-icon">🏛️</span>Clubs</button>
+  <button class="mob-btn" data-tab="meetings"><span class="mob-icon">📋</span>Meetings</button>
+  <button class="mob-btn" data-tab="sponsors"><span class="mob-icon">💼</span>Sponsors</button>
+</nav>
+
+<script>
+// ── Storage ──────────────────────────────────────────
+const KEY = 'uvic-vpe-tracker-v1';
+let db = { todos: [], logins: [], clubs: [], meetings: [], sponsors: [] };
+
+function load() {
+  try { const s = localStorage.getItem(KEY); if (s) db = JSON.parse(s); } catch(_) {}
+}
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch(_) {}
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// ── Helpers ──────────────────────────────────────────
+function $v(id) { return (document.getElementById(id)?.value || '').trim(); }
+function $c(id) { const el = document.getElementById(id); if (el) el.value = ''; }
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const [y, m, d] = iso.split('-');
+  return `${ms[+m-1]} ${+d}, ${y}`;
+}
+
+function shortDate(iso) {
+  if (!iso) return '—';
+  const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(iso);
+  return `${ms[d.getMonth()]} ${d.getDate()}`;
+}
+
+function emptyRow(cols, icon, msg) {
+  return `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">${icon}</div>${msg}</div></td></tr>`;
+}
+
+// ── Tab switching ────────────────────────────────────
+const TABS = ['todo','logins','clubs','meetings','sponsors'];
+
+function switchTab(tab) {
+  TABS.forEach(t => {
+    const s = document.getElementById('section-' + t);
+    if (s) s.classList.toggle('active', t === tab);
+  });
+  document.querySelectorAll('.nav-btn, .mob-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+}
+
+document.getElementById('nav').addEventListener('click', e => {
+  const btn = e.target.closest('.nav-btn');
+  if (btn) switchTab(btn.dataset.tab);
+});
+
+document.getElementById('mob-nav').addEventListener('click', e => {
+  const btn = e.target.closest('.mob-btn');
+  if (btn) switchTab(btn.dataset.tab);
+});
+
+// ── TODO ─────────────────────────────────────────────
+document.getElementById('todo-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTodo();
+});
+
+function addTodo() {
+  const text = $v('todo-input');
+  if (!text) return;
+  db.todos.push({ id: uid(), text, done: false, dt: new Date().toISOString() });
+  save();
+  document.getElementById('todo-input').value = '';
+  renderTodos();
+}
+
+function toggleTodo(id) {
+  const t = db.todos.find(x => x.id === id);
+  if (t) { t.done = !t.done; save(); renderTodos(); }
+}
+
+function deleteTodo(id) {
+  db.todos = db.todos.filter(x => x.id !== id);
+  save(); renderTodos();
+}
+
+function clearDone() {
+  db.todos = db.todos.filter(x => !x.done);
+  save(); renderTodos();
+}
+
+function renderTodos() {
+  const el = document.getElementById('todo-list');
+  const cnt = document.getElementById('todo-count');
+  const rem = db.todos.filter(x => !x.done).length;
+  cnt.textContent = db.todos.length === 0 ? '' : `${rem} of ${db.todos.length} remaining`;
+
+  if (!db.todos.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📝</div>No tasks yet — add one above.</div>`;
+    return;
+  }
+
+  const sorted = [...db.todos.filter(x => !x.done), ...db.todos.filter(x => x.done)];
+  el.innerHTML = sorted.map(t => `
+    <div class="todo-item${t.done ? ' done' : ''}">
+      <input class="todo-cb" type="checkbox" ${t.done ? 'checked' : ''} data-id="${t.id}">
+      <span class="todo-text">${esc(t.text)}</span>
+      <span class="todo-dt">${shortDate(t.dt)}</span>
+      <button class="del-btn" data-del-todo="${t.id}" title="Delete">✕</button>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.todo-cb').forEach(cb => {
+    cb.addEventListener('change', () => toggleTodo(cb.dataset.id));
+  });
+  el.querySelectorAll('[data-del-todo]').forEach(btn => {
+    btn.addEventListener('click', () => deleteTodo(btn.dataset.delTodo));
+  });
+}
+
+// ── LOGINS ───────────────────────────────────────────
+function addLogin() {
+  const site = $v('l-site'), user = $v('l-user');
+  if (!site || !user) { alert('Site and username are required.'); return; }
+  db.logins.push({ id: uid(), site, user, pass: $v('l-pass'), url: $v('l-url'), notes: $v('l-notes') });
+  save();
+  ['l-site','l-user','l-pass','l-url','l-notes'].forEach($c);
+  renderLogins();
+}
+
+function deleteLogin(id) {
+  if (!confirm('Delete this login?')) return;
+  db.logins = db.logins.filter(x => x.id !== id);
+  save(); renderLogins();
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1600);
+  }).catch(() => {
+    const ta = Object.assign(document.createElement('textarea'), { value: text });
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    btn.textContent = 'Copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1600);
+  });
+}
+
+function renderLogins() {
+  const tbody = document.getElementById('login-tbody');
+  if (!db.logins.length) {
+    tbody.innerHTML = emptyRow(5, '🔑', 'No logins saved yet.');
+    return;
+  }
+  tbody.innerHTML = db.logins.map(l => `
+    <tr>
+      <td>
+        <strong>${esc(l.site)}</strong>
+        ${l.notes ? `<br><span style="font-size:11px;color:var(--muted)">${esc(l.notes)}</span>` : ''}
+      </td>
+      <td>
+        <span>${esc(l.user)}</span>
+        <button class="copy-btn" data-copy="${esc(l.user)}">Copy</button>
+      </td>
+      <td class="hide-mob">
+        <span class="pw-dots">••••••••</span>
+        <button class="copy-btn" data-copy="${esc(l.pass)}">Copy</button>
+      </td>
+      <td class="hide-mob">
+        ${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:12px">${esc(l.url.replace(/^https?:\/\//,'').replace(/\/$/,''))}</a>` : '—'}
+      </td>
+      <td><button class="del-btn" data-del-login="${l.id}">✕</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyToClipboard(btn.dataset.copy, btn));
+  });
+  tbody.querySelectorAll('[data-del-login]').forEach(btn => {
+    btn.addEventListener('click', () => deleteLogin(btn.dataset.delLogin));
+  });
+}
+
+// ── CLUBS ────────────────────────────────────────────
+function addClub() {
+  const name = $v('c-name');
+  if (!name) { alert('Organization name is required.'); return; }
+  db.clubs.push({ id: uid(), name, contact: $v('c-contact'), cat: $v('c-cat'), email: $v('c-email'), phone: $v('c-phone'), web: $v('c-web'), notes: $v('c-notes') });
+  save();
+  ['c-name','c-contact','c-email','c-phone','c-web','c-notes'].forEach($c);
+  renderClubs();
+}
+
+function deleteClub(id) {
+  db.clubs = db.clubs.filter(x => x.id !== id);
+  save(); renderClubs();
+}
+
+function kv(label, val, link) {
+  if (!val) return '';
+  const v = link ? `<a href="${esc(link)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(val)}</a>` : esc(val);
+  return `<div class="kv"><div class="kv-label">${label}</div><div class="kv-val">${v}</div></div>`;
+}
+
+function renderClubs() {
+  const grid = document.getElementById('clubs-grid');
+  if (!db.clubs.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">🏛️</div>No contacts added yet.</div>`;
+    return;
+  }
+  grid.innerHTML = db.clubs.map(c => `
+    <div class="club-card">
+      <div class="club-card-head">
+        <div class="club-name">${esc(c.name)}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="cat-tag">${esc(c.cat)}</span>
+          <button class="del-btn" data-del-club="${c.id}">✕</button>
+        </div>
+      </div>
+      ${kv('Contact', c.contact)}
+      ${c.email ? kv('Email', c.email, `mailto:${c.email}`) : ''}
+      ${kv('Phone', c.phone)}
+      ${c.web ? kv('Website', c.web.replace(/^https?:\/\//,'').replace(/\/$/,''), c.web) : ''}
+      ${kv('Notes', c.notes)}
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('[data-del-club]').forEach(btn => {
+    btn.addEventListener('click', () => deleteClub(btn.dataset.delClub));
+  });
+}
+
+// ── MEETINGS ─────────────────────────────────────────
+function addMeeting() {
+  const title = $v('m-title');
+  if (!title) { alert('Meeting title is required.'); return; }
+  db.meetings.push({ id: uid(), title, date: $v('m-date'), att: $v('m-att'), notes: $v('m-notes'), actions: $v('m-actions') });
+  save();
+  ['m-title','m-att','m-notes','m-actions'].forEach($c);
+  renderMeetings();
+}
+
+function deleteMeeting(id) {
+  db.meetings = db.meetings.filter(x => x.id !== id);
+  save(); renderMeetings();
+}
+
+function renderMeetings() {
+  const el = document.getElementById('meeting-list');
+  if (!db.meetings.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div>No meeting records yet.</div>`;
+    return;
+  }
+  const sorted = [...db.meetings].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  el.innerHTML = sorted.map(m => `
+    <div class="meeting-card" id="mc-${m.id}">
+      <div class="meeting-head" data-toggle="${m.id}">
+        <span class="m-date-chip">${fmtDate(m.date)}</span>
+        <span class="m-title">${esc(m.title)}</span>
+        ${m.att ? `<span class="m-att-count">${m.att.split(',').length} attendee${m.att.split(',').length !== 1 ? 's' : ''}</span>` : ''}
+        <span class="m-chevron">▾</span>
+        <button class="del-btn" data-del-meeting="${m.id}">✕</button>
+      </div>
+      <div class="meeting-body">
+        ${m.att ? `<div class="m-section"><div class="m-section-label">Attendees</div><div class="m-section-body">${esc(m.att)}</div></div>` : ''}
+        ${m.notes ? `<div class="m-section"><div class="m-section-label">Notes</div><div class="m-section-body">${esc(m.notes)}</div></div>` : ''}
+        ${m.actions ? `<div class="m-section"><div class="m-section-label">Action Items</div><div class="m-section-body">${esc(m.actions)}</div></div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('[data-toggle]').forEach(head => {
+    head.addEventListener('click', e => {
+      if (e.target.closest('.del-btn')) return;
+      document.getElementById('mc-' + head.dataset.toggle)?.classList.toggle('open');
+    });
+  });
+  el.querySelectorAll('[data-del-meeting]').forEach(btn => {
+    btn.addEventListener('click', () => deleteMeeting(btn.dataset.delMeeting));
+  });
+}
+
+// ── SPONSORS ─────────────────────────────────────────
+let sFilter = 'all';
+const STATUS_CYCLE = ['pending', 'received', 'denied'];
+
+function addSponsor() {
+  const co = $v('s-co');
+  if (!co) { alert('Company name is required.'); return; }
+  db.sponsors.push({ id: uid(), co, contact: $v('s-contact'), status: $v('s-status'), req: parseFloat($v('s-req')) || 0, rcv: parseFloat($v('s-rcv')) || 0, date: $v('s-date'), notes: $v('s-notes') });
+  save();
+  ['s-co','s-contact','s-req','s-rcv','s-date','s-notes'].forEach($c);
+  document.getElementById('s-status').value = 'pending';
+  renderSponsors();
+}
+
+function deleteSponsor(id) {
+  if (!confirm('Delete this application?')) return;
+  db.sponsors = db.sponsors.filter(x => x.id !== id);
+  save(); renderSponsors();
+}
+
+function cycleStatus(id) {
+  const s = db.sponsors.find(x => x.id === id);
+  if (!s) return;
+  s.status = STATUS_CYCLE[(STATUS_CYCLE.indexOf(s.status) + 1) % STATUS_CYCLE.length];
+  save(); renderSponsors();
+}
+
+document.querySelector('.filter-row').addEventListener('click', e => {
+  const btn = e.target.closest('.f-btn');
+  if (!btn) return;
+  sFilter = btn.dataset.filter;
+  document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSponsors();
+});
+
+function fmt$(n) { return n ? '$' + n.toLocaleString() : '—'; }
+
+function renderSponsors() {
+  const cnts = { received: 0, pending: 0, denied: 0 };
+  db.sponsors.forEach(s => { if (cnts[s.status] !== undefined) cnts[s.status]++; });
+  document.getElementById('stat-rcv').textContent = cnts.received;
+  document.getElementById('stat-pnd').textContent = cnts.pending;
+  document.getElementById('stat-dnd').textContent = cnts.denied;
+
+  const list = sFilter === 'all' ? db.sponsors : db.sponsors.filter(s => s.status === sFilter);
+  const sorted = [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const tbody = document.getElementById('sponsor-tbody');
+
+  if (!sorted.length) {
+    tbody.innerHTML = emptyRow(7, '💼', sFilter === 'all' ? 'No applications yet.' : `No ${sFilter} applications.`);
+    return;
+  }
+
+  tbody.innerHTML = sorted.map(s => `
+    <tr>
+      <td>
+        <strong>${esc(s.co)}</strong>
+        ${s.notes ? `<br><span style="font-size:11px;color:var(--muted)">${esc(s.notes)}</span>` : ''}
+      </td>
+      <td><span class="badge ${esc(s.status)}" data-cycle="${s.id}" title="Click to cycle status">${s.status}</span></td>
+      <td class="num">${fmt$(s.req)}</td>
+      <td class="num">${fmt$(s.rcv)}</td>
+      <td class="hide-mob" style="font-variant-numeric:tabular-nums">${fmtDate(s.date)}</td>
+      <td class="hide-mob">${esc(s.contact) || '—'}</td>
+      <td><button class="del-btn" data-del-sp="${s.id}">✕</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-cycle]').forEach(b => {
+    b.addEventListener('click', () => cycleStatus(b.dataset.cycle));
+  });
+  tbody.querySelectorAll('[data-del-sp]').forEach(b => {
+    b.addEventListener('click', () => deleteSponsor(b.dataset.delSp));
+  });
+}
+
+// ── Init ─────────────────────────────────────────────
+(function init() {
+  load();
+  const today = new Date().toISOString().split('T')[0];
+  ['m-date', 's-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+  renderTodos();
+  renderLogins();
+  renderClubs();
+  renderMeetings();
+  renderSponsors();
+})();
+</script>
+</body>
+</html>
